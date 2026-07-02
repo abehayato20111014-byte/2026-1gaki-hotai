@@ -91,6 +91,15 @@
         .toggle-btn:hover {
             background-color: #5a6268;
         }
+        .quit-btn {
+            background-color: #e74c3c;
+            margin-top: 25px;
+            font-size: 14px;
+            padding: 8px;
+        }
+        .quit-btn:hover {
+            background-color: #c0392b;
+        }
     </style>
 </head>
 <body>
@@ -119,6 +128,8 @@
             <div id="feedback-exp" class="exp"></div>
             <button id="next-btn" style="background-color: #2ecc71; margin-top: 15px;">次の問題へ</button>
         </div>
+
+        <button id="quit-btn" class="quit-btn">途中で退出する（ここまでの結果を記録）</button>
     </div>
 
     <div id="result-screen" class="hidden">
@@ -129,7 +140,6 @@
 </div>
 
 <script>
-    // 指定形式に則った大量のクイズデータ
     const Quiz = [
         // 現代生活と私達の心と体
         { id: 1, q: "現代社会では●●が発達し、△△化が進みました。その結果私達は■■不足になりがちになりました。●●に入る単語を答えよ", ans: ["交通", "こうつう"], exp: "教科書の「現代生活と私達の心と体」より。" },
@@ -180,7 +190,7 @@
         { id: 38, q: "病原体の侵入を防いだり、排除したりする力を何というか", ans: ["抵抗力", "たいこうりょく"], exp: "私たちの体に備わっている防御壁です。" },
         { id: 39, q: "抵抗力が低下しているときはどうなるか", ans: ["感染しやすかったり、症状が重くなったりする"], exp: "病気にかかりやすく、また長引きやすくなります。" },
         { id: 40, q: "抵抗力の一つで病原体等の異物を体外へ排除する働きを何というか", ans: ["免疫", "めんえき"], exp: "一度戦った相手を記憶する高度な仕組みを持っています。" },
-        { id: 41, q: "病気に感染した経験によって免疫の機能はどうなるか", ans: ["強化される"], exp: "同じ病原体に対して強い対抗手段を得ます。" },
+        { id: 41, q: "病に感染した経験によって免疫の機能はどうなるか", ans: ["強化される"], exp: "同じ病原体に対して強い対抗手段を得ます。" },
         { id: 42, q: "免疫の仕組みにおいて、マクロファージ（白血球）が病原体を食べた後に最初に行うことは何か", ans: ["ヘルパーT細胞に病原体の情報を伝える"], exp: "敵の情報を司令官に伝達します（抗原提示）。" },
         { id: 43, q: "マクロファージから情報を受け取ったヘルパーT細胞は何をするか", ans: ["B細胞が抗体をつくるよう指令を出す", "B細胞が抗体を作るよう指令を出す"], exp: "攻撃の要である武器職人（B細胞）に命令を下します。" },
         { id: 44, q: "ヘルパーT細胞から指令を受けたB細胞は何をするか", ans: ["抗体を出して病原体を攻撃する", "抗体を作って病原体を攻撃する"], exp: "ピンポイントで敵を無力化する特効薬（抗体）を放ちます。" },
@@ -200,7 +210,7 @@
         { id: 56, q: "予防接種を受けた本人はどうなるか", ans: ["感染しにくくなるだけでなく、感染しても発病しにくくなる"], exp: "発症や重症化を防ぐ高い効果があります。" },
         { id: 57, q: "予防接種において、インフルエンザの対象（義務か任意か）はどうなっているか", ans: ["任意"], exp: "希望者が各自で受ける形になります。" },
         { id: 58, q: "予防接種において、麻しん・風しんの対象はどうなっているか", ans: ["全員", "定期"], exp: "公費による定期接種の対象であり、原則全員が受けます。" },
-        { id: 59, q: "予防接種において、結核（BCG）の対象はどうなっているか", ans: ["全員", "定期"], exp: "こちらも日本の定期接種スケジュールに含まれます。" },
+        { id: 59, q: "予防接種において、結核（BCG）の対象はどうなっているか", ans: ["全員", "定期"], exp: "日本の定期接種スケジュールに含まれます。" },
         { id: 60, q: "インフルエンザの予防接種の回数はどのように決まるか", ans: ["毎シーズン流行前。年齢により回数が異なる。", "年齢により回数が異なる"], exp: "ウイルスの型が毎年変わるため毎シーズン受けます。" },
         { id: 61, q: "麻しん・風しんの予防接種の回数はどのようになっているか", ans: ["1歳時と小学校入学前の2回", "2回"], exp: "免疫をより確実にするため、2回に分けて摂取します。" },
         { id: 62, q: "結核（BCG）の予防接種の回数はどのようになっているか", ans: ["0歳時に1回", "1回"], exp: "乳幼児期の重症化を防ぐため、生後1年未満に行います。" },
@@ -259,6 +269,7 @@
     const startWrongBtn = document.getElementById('start-wrong-btn');
     const backHomeBtn = document.getElementById('back-home-btn');
     const submitBtn = document.getElementById('submit-btn');
+    const quitBtn = document.getElementById('quit-btn');
     
     const quizProgress = document.getElementById('quiz-progress');
     const quizQuestion = document.getElementById('quiz-question');
@@ -274,14 +285,23 @@
     const resultScore = document.getElementById('result-score');
     const historyContainer = document.getElementById('history-container');
 
+    // 配列をランダムにシャッフルする関数 (Fisher-Yatesシャッフル)
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
     // 全角を半角、一部の記号（〜や-）を標準化
     function toHalfWidth(str) {
         return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
             return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-        }).replace(/[〜－ー]/g, '-').replace(/[、，]/g, ','); // 記号ブレもカバー
+        }).replace(/[〜－ー]/g, '-').replace(/[、，]/g, ','); 
     }
 
-    // 文字列の標準化（空白トリム、小文字化、全角半角の統合、読点などの文字揃え）
+    // 文字列の標準化
     function normalizeStr(str) {
         if (!str) return '';
         return toHalfWidth(str.toString().trim().toLowerCase()).replace(/\s+/g, '');
@@ -294,8 +314,13 @@
             currentQuizSet = Quiz.filter(q => wrongQuizIds.includes(q.id));
         }
 
+        // 開始時に問題をシャッフル
+        currentQuizSet = shuffleArray(currentQuizSet);
+
         currentQuestionIndex = 0;
-        wrongQuizIds = wrongQuizIds.filter(id => !currentQuizSet.map(q => q.id).includes(id)); 
+        
+        // 判定が上書きされるケースなどを考慮し、クイズセットに含まれる問題のuserResultを一旦クリア
+        currentQuizSet.forEach(q => delete q.userResult);
 
         homeScreen.classList.add('hidden');
         resultScreen.classList.add('hidden');
@@ -367,32 +392,69 @@
         if (currentQuestionIndex < currentQuizSet.length) {
             showQuestion();
         } else {
-            showResults();
+            processQuizEnd(currentQuizSet.length);
         }
     }
 
-    function showResults() {
-        quizScreen.classList.add('hidden');
-        resultScreen.classList.remove('hidden');
+    // 途中で退出する処理
+    function handleQuit() {
+        // まだ解答していない（結果がセットされていない）状態で退出ボタンが押された場合、
+        // その問題はスキップされた（解答対象外）として、ここまでの回答済み問題数で計算します。
+        let answeredCount = currentQuestionIndex;
+        
+        // もし現在の問題の解答・判定が終わっている状態（次へボタンが見えている状態）なら、その問題も件数に含める
+        if (currentQuizSet[currentQuestionIndex] && currentQuizSet[currentQuestionIndex].userResult) {
+            answeredCount = currentQuestionIndex + 1;
+        }
 
+        if (answeredCount === 0) {
+            // 1問も解かずに戻る場合は履歴を残さずホームへ
+            quizScreen.classList.add('hidden');
+            homeScreen.classList.remove('hidden');
+            return;
+        }
+
+        if (confirm(`第 ${answeredCount} 問までの結果を記録してホームに戻りますか？`)) {
+            processQuizEnd(answeredCount, true);
+        }
+    }
+
+    // クイズ終了時のデータ処理共通ロジック
+    function processQuizEnd(totalCount, isInterrupted = false) {
         let correctCount = 0;
-        currentQuizSet.forEach(q => {
-            if (q.userResult.isCorrect) {
+        
+        // 対象の範囲（解答したものまで、または全件）で集計
+        for (let i = 0; i < totalCount; i++) {
+            const q = currentQuizSet[i];
+            if (q.userResult && q.userResult.isCorrect) {
                 correctCount++;
+                // 正解した場合は「間違えた問題リスト」から除外
+                wrongQuizIds = wrongQuizIds.filter(id => id !== q.id);
             } else {
+                // 不正解、または解答せず途中でやめた場合は「間違えた問題リスト」に追加
                 if (!wrongQuizIds.includes(q.id)) {
                     wrongQuizIds.push(q.id);
                 }
             }
-        });
-
-        resultScore.textContent = `全 ${currentQuizSet.length} 問中、 ${correctCount} 問正解！`;
+        }
 
         const timeStamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        scoreHistory.push(`[${timeStamp}] ${currentQuizSet.length}問中 ${correctCount}問正解`);
+        const label = isInterrupted ? "途中終了" : "完了";
+        scoreHistory.push(`[${timeStamp}] ${totalCount}問中 ${correctCount}問正解 (${label})`);
         updateHistoryDOM();
 
         startWrongBtn.disabled = wrongQuizIds.length === 0;
+
+        // 画面遷移
+        quizScreen.classList.add('hidden');
+        if (isInterrupted) {
+            // 途中終了時は直接ホームに戻る
+            homeScreen.classList.remove('hidden');
+        } else {
+            // 全問解き終わった時は結果画面へ
+            resultScreen.classList.remove('hidden');
+            resultScore.textContent = `全 ${currentQuizSet.length} 問中、 ${correctCount} 問正解！`;
+        }
     }
 
     function updateHistoryDOM() {
@@ -415,6 +477,7 @@
     });
     toggleJudgmentBtn.addEventListener('click', handleToggleJudgment);
     nextBtn.addEventListener('click', handleNext);
+    quitBtn.addEventListener('click', handleQuit);
 </script>
 
 </body>
